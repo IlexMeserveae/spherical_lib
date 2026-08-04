@@ -1,0 +1,11 @@
+[package]
+name = "spherical_lib"
+version = "0.2.0"
+edition = "2024"
+
+[features]
+default = []
+egui_compat = ["dep:eframe"]
+
+[dependencies]
+eframe = {version = "0.34.3", optional = true}
