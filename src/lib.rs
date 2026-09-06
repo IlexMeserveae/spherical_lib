@@ -1,29 +1,29 @@
 #![forbid(unsafe_code)]
 
-use crate::spherical_coords::radians::Radians;
-use crate::spherical_coords::SphericalCoords;
-
+pub mod spherical_coords;
 pub mod plotting;
 #[cfg(feature = "egui_compat")]
 pub mod egui_compat;
-pub mod spherical_coords;
-
-pub fn coords_from_degrees(degrees: (f64, f64)) -> SphericalCoords {
-    SphericalCoords::unit(Radians::from_degrees(degrees.0), Radians::from_degrees(degrees.1))
-}
-pub fn degrees_from_coords(coords: SphericalCoords) -> (f64, f64) {
-    (coords.inc().to_degrees(), coords.azi().to_degrees())
-}
 
 #[allow(dead_code)]
 pub mod testing {
+    use crate::spherical_coords::radians::Radians;
     use crate::spherical_coords::SphericalCoords;
 
+
+    pub fn coords_from_degrees(degrees: (f64, f64)) -> SphericalCoords {
+        SphericalCoords::unit(Radians::from_degrees(degrees.0), Radians::from_degrees(degrees.1))
+    }
+    pub fn degrees_from_coords(coords: SphericalCoords) -> (f64, f64) {
+        (coords.inc().to_degrees(), coords.azi().to_degrees())
+    }
+
+
     pub fn approx_eq_floats(e: f64, a: f64) -> Result<(), String> {
-        if (a - e).abs() > 0.01 { Err(format!("Expected {e:.3}, found {a:.3}!")) } else { Ok(()) }
+        if (a - e).abs() > 0.001 { Err(format!("Expected {e:.3}, found {a:.3}!")) } else { Ok(()) }
     }
     pub fn approx_eq_param_floats(e: f64, a: f64, param: &str, index: usize) -> Result<(), String> {
-        if (a - e).abs() > 0.01 {
+        if (a - e).abs() > 0.001 {
             return Err(format!("Expected {param} = {e:.3} at index {index}, found {a:.3}!"))
         }
 
@@ -45,9 +45,47 @@ pub mod testing {
 
 #[cfg(test)]
 mod spherical_coords_tests {
-    use super::coords_from_degrees;
     use crate::spherical_coords::radians::{normalise, Radians};
     use crate::testing::*;
+
+    mod utils {
+        use crate::spherical_coords::radians::Radians;
+        use crate::testing::{approx_eq_coords, coords_from_degrees};
+
+        pub fn debug_square() -> [(f64, f64); 4] { [(25., 30.), (25., 120.), (25., 210.), (25., 300.)] }
+
+        pub fn inverse_transform_check(label: &str, coords: (f64, f64), rotation: f64,
+                                   translation: (f64, f64)) -> bool {
+            let rotation = Radians::from_degrees(rotation);
+            let translation = coords_from_degrees(translation).into();
+
+            println!("\n\nInverse transform test - {}\n", label);
+
+            let original = coords_from_degrees(coords);
+            println!("Original: {}\n", original.degree_string(4));
+
+            let rotated = original.rotate(rotation);
+            println!("Rotated: {}\n", rotated.degree_string(4));
+
+            let translated = rotated.translate(translation);
+            println!("Translated: {}\n", translated.degree_string(4));
+
+            let de_translated = translated.inverse_translate(translation);
+            println!("De-translated: {}\n", de_translated.degree_string(4));
+
+            let de_rotated = de_translated.rotate(-rotation);
+            println!("De-rotated: {}\n", de_rotated.degree_string(4));
+
+            if original.inc() == Radians::ZERO || original.inc() == Radians::HALF_TAU {
+                println!("Point is at a zenith, so azimuth is arbitrary.\n");
+                return true;
+            }
+            let succ = approx_eq_coords([original], [de_rotated]).is_ok();
+            if !succ { println!("Test Failed!!!\n"); }
+            succ
+        }
+
+    }
 
     #[test]
     fn normalise_test() {
@@ -57,11 +95,9 @@ mod spherical_coords_tests {
         approx_eq_floats(normalise(-37.5), 0.199).unwrap();
     }
 
-    fn debug_square() -> [(f64, f64); 4] { [(25., 30.), (25., 120.), (25., 210.), (25., 300.)] }
-
     #[test]
     fn translate_test_1() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let translation = coords_from_degrees((0., 0.)).into();
@@ -80,7 +116,7 @@ mod spherical_coords_tests {
 
     #[test]
     fn translate_test_2() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let translation = coords_from_degrees((110., 130.)).into();
@@ -99,7 +135,7 @@ mod spherical_coords_tests {
 
     #[test] #[ignore]
     fn translate_check() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let translation = coords_from_degrees((110., 130.)).into();
@@ -114,7 +150,7 @@ mod spherical_coords_tests {
 
     #[test]
     fn rotate_test() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let rotation = Radians::from_degrees(65.0);
@@ -133,7 +169,7 @@ mod spherical_coords_tests {
 
     #[test]
     fn transform_test() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let rotation = Radians::from_degrees(-37.0);
@@ -151,36 +187,6 @@ mod spherical_coords_tests {
         approx_eq_coords(expected, transformed).unwrap();
     }
 
-    fn inverse_transform_check(label: &str, coords: (f64, f64), rotation: f64, translation: (f64, f64)) -> bool {
-        let rotation = Radians::from_degrees(rotation);
-        let translation = coords_from_degrees(translation).into();
-
-        println!("\n\nInverse transform test - {}\n", label);
-
-        let original = coords_from_degrees(coords);
-        println!("Original: {}\n", original.degree_string(4));
-
-        let rotated = original.rotate(rotation);
-        println!("Rotated: {}\n", rotated.degree_string(4));
-
-        let translated = rotated.translate(translation);
-        println!("Translated: {}\n", translated.degree_string(4));
-
-        let de_translated = translated.inverse_translate(translation);
-        println!("De-translated: {}\n", de_translated.degree_string(4));
-
-        let de_rotated = de_translated.rotate(-rotation);
-        println!("De-rotated: {}\n", de_rotated.degree_string(4));
-
-        if original.inc() == Radians::ZERO || original.inc() == Radians::HALF_TAU {
-            println!("Point is at a zenith, so azimuth is arbitrary.\n");
-            return true;
-        }
-        let succ = approx_eq_coords([original], [de_rotated]).is_ok();
-        if !succ { println!("Test Failed!!!\n"); }
-        succ
-    }
-
     #[test] #[ignore]
     fn inverse_transform_check_many() {
         let checks = [
@@ -190,14 +196,15 @@ mod spherical_coords_tests {
             ("4", (180., -819.), -37., (  7., -10.) ),
         ];
 
-        if checks.map(|c| inverse_transform_check(c.0, c.1, c.2, c.3)).contains(&false) {
+        if checks.map(|c| utils::inverse_transform_check(c.0, c.1, c.2, c.3))
+            .contains(&false) {
             panic!("Inverse transform check failed.");
         }
     }
 
     #[test]
     fn inverse_transform_test() {
-        let original = debug_square()
+        let original = utils::debug_square()
             .map(|deg| coords_from_degrees(deg));
 
         let rotation = Radians::from_degrees(-54.0);
@@ -220,14 +227,33 @@ mod spherical_coords_tests {
         let expected = original;
         approx_eq_coords(expected, re_transformed).unwrap()
     }
+
+    #[test]
+    fn arc_distance_from_line_test() {
+
+        let a = vec![(50.0, 0.0), (90.0, -90.0), (165.0, 20.0), (0.0, 0.0)];
+        let b = vec![(0.0, -25.0), (15.0, 45.0), (90.0, 20.0), (135.0, -60.0)];
+        let p = vec![(30.0, 40.0), (125.0, -150.0), (105.0, 20.0), (65.0, -35.0)];
+        let expected = vec![18.747, 65.822, 0.000, 22.521];
+
+        // Case No.2 tests if the bounds check is working
+
+        for i in 0..4 {
+            let a = coords_from_degrees(a[i]);
+            let b = coords_from_degrees(b[i]);
+            let p = coords_from_degrees(p[i]);
+
+            let d = p.arc_distance_from_line(a, b);
+            approx_eq_floats(d.to_degrees(), expected[i]).unwrap();
+        }
+    }
 }
 
 #[cfg(test)]
 mod plotting_tests {
-    use crate::coords_from_degrees;
+    use crate::plotting::spherical_cross_product;
     use crate::spherical_coords::radians::Radians;
     use crate::spherical_coords::SphericalCoords;
-    use crate::plotting::spherical_cross_product;
     use crate::testing::*;
 
     #[test]

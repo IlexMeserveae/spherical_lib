@@ -124,7 +124,7 @@ impl SphericalCoords {
     pub fn degree_string(&self, dp: usize) -> String {
         let inc = self.inclination.to_degrees();
         let azi = self.azimuth.to_degrees();
-        format!("({inc:.0$}, {azi:.0$})", dp)
+        format!("({inc:.0$}°, {azi:.0$}°)", dp)
     }
 
     pub fn rad(&self) -> f64 { self.radius }
@@ -163,7 +163,7 @@ impl SphericalCoords {
         let new_azi = radians::atan2(y, x);
         let new_inc = radians::acos(z);
 
-        if new_azi.is_err() { return Self::with_radius(self.radius, Radians::ZERO, Radians::ZERO) }
+        if new_azi.is_err() { return Self::with_radius(self.radius, Radians::ZERO, azi) }
 
         Self::with_radius(self.radius, new_inc, new_azi.unwrap())
     }
@@ -202,6 +202,31 @@ impl SphericalCoords {
         
         let z = cos(inc) * cos(theta) - cos(azi) * sin(inc) * sin(theta);
         radians::acos(z)
+    }
+    pub fn arc_distance_from_line(&self, a: SphericalCoords, b: SphericalCoords) -> Radians {
+        let p = *self;
+        
+        let trans = a.into();
+        let p2 = p.inverse_translate(trans);
+        let a2 = a.inverse_translate(trans);
+        let b2 = b.inverse_translate(trans);
+
+        let rotation = Radians::QUARTER_TAU - b2.azi();
+        let trans2 = SphericalCoords::with_radius(a.rad(), 
+                                                  Radians::QUARTER_TAU, Radians::ZERO).into();
+        let p3 = p2.transform(rotation, trans2);
+        let a3 = a2.transform(rotation, trans2);
+        let b3 = b2.transform(rotation, trans2);
+
+        // Account for closest point not actually being on the line
+        if p3.azi() < Radians::ZERO || p3.azi() > b3.azi() {
+            let d_a = p3.arc_distance(a3);
+            let d_b = p3.arc_distance(b3);
+            Radians::new(f64::min(d_a.value(), d_b.value()))
+        }
+        else {
+            (p3.inc() - Radians::QUARTER_TAU).abs()
+        }
     }
 }
 
