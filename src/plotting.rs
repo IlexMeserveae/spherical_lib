@@ -1,13 +1,13 @@
 use spherical_coords::SphericalCoords;
 use crate::spherical_coords;
-use crate::spherical_coords::radians;
-use crate::spherical_coords::radians::{cos, cot, sin, tan, Radians};
+use crate::radians;
+use crate::radians::{cos, cot, sin, tan, Radians};
 
 pub use spherical_plotter::SphericalPlotter;
 mod spherical_plotter {
     use crate::plotting::canvas_pos::{cpos, CanvasPos};
     use crate::plotting::{angle_to_pos, circle_bezier, pos_to_angle, scale_from_line, spherical_cross_product, CanvasPainter, Color, CubicBezier};
-    use crate::spherical_coords::radians::Radians;
+    use crate::radians::Radians;
     use crate::spherical_coords::SphericalCoords;
     use std::mem;
 
