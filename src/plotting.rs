@@ -10,6 +10,7 @@ mod spherical_plotter {
     use crate::radians::Radians;
     use crate::spherical_coords::SphericalCoords;
     use std::mem;
+    use crate::Polygon;
 
     pub struct SphericalPlotter<P> where P: CanvasPainter {
         painter: P, sphere_radius: f64, focus: SphericalCoords,
@@ -171,25 +172,23 @@ mod spherical_plotter {
         ///
         /// Plots a polygon using spherical coordinates.
         ///
-        pub fn plot_polygon(&self, coords: &Vec<SphericalCoords>, color: Color) {
+        pub fn plot_polygon(&self, polygon: &Polygon, border: Color, fill: Option<Color>) {
+            let coords = polygon.coords();
             let len = coords.len();
-            for &c in coords { self.plot_dot_if_visible(c, color); }
-            if len < 3 { return; }
-
-            for i in 0..len {
-                let c1 = coords[i];
-                let c2 = coords[(i + 1) % len];
-                self.plot_arc(c1, c2, color);
+            for &c in coords {
+                self.plot_dot_if_visible(c, border);
             }
-        }
-
-        // TODO: remove this
-        pub fn plot_debug(&self, coords: &Vec<SphericalCoords>, color: Color) {
-            let len = coords.len();
-            for &c in coords { self.plot_dot_if_visible(c, color); }
             if len < 2 { return; }
 
-            self.plot_arc(coords[0], coords[1], color);
+            for i in 0..len - 1 {
+                self.plot_arc(coords[i], coords[i + 1], border);
+            }
+            if !polygon.is_closed() { return; }
+
+            self.plot_arc(coords[len - 1], coords[0], border);
+            if let Some(fill) = fill {
+                // TODO: Fill the polygon
+            }
         }
     }
 }
