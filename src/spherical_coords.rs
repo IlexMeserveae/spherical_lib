@@ -20,6 +20,24 @@ impl Display for SphericalCoords {
         }
     }
 }
+impl From<(f64, f64, f64)> for SphericalCoords {
+    fn from(value: (f64, f64, f64)) -> Self {
+        let (x, y, z) = value;
+        let r = (x * x + y * y + z * z).sqrt();
+        let inc = super::radians::acos(y / r);
+        let azi = super::radians::atan2(z, x).unwrap_or_default();
+
+        Self::with_radius(r, inc, azi)
+    }
+}
+impl From<SphericalCoords> for (f64, f64, f64) {
+    fn from(value: SphericalCoords) -> Self {
+        let x = value.rad() * cos(value.azimuth) * sin(value.inclination);
+        let y = value.rad() * cos(value.inclination);
+        let z = value.rad() * sin(value.azimuth) * sin(value.inclination);
+        (x, y, z)
+    }
+}
 impl SphericalCoords {
     pub fn with_radius(radius: f64, mut inclination: Radians, mut azimuth: Radians) -> Self {
         if inclination < Radians::ZERO { inclination = -inclination; azimuth += Radians::HALF_TAU }
@@ -34,23 +52,15 @@ impl SphericalCoords {
     pub fn inc(&self) -> Radians { self.inclination }
     pub fn azi(&self) -> Radians { self.azimuth }
 
-    pub fn to_cartesian(&self) -> (f64, f64, f64) {
-        let x = self.rad() * cos(self.azimuth) * sin(self.inclination);
-        let y = self.rad() * cos(self.inclination);
-        let z = self.rad() * sin(self.azimuth) * sin(self.inclination);
-        (x, y, z)
-    }
-    pub fn from_cartesian(coords: (f64, f64, f64)) -> Self {
-        let (x, y, z) = coords;
-        let r = (x * x + y * y + z * z).sqrt();
-        let inc = super::radians::acos(y / r);
-        let azi = super::radians::atan2(z, x).unwrap_or_default();
-
-        Self::with_radius(r, inc, azi)
-    }
+    ///
+    /// Returns a copy with the radius scaled by the given factor.
+    ///
     pub fn scale(&self, scale: f64) -> SphericalCoords {
         SphericalCoords { radius: self.radius * scale, ..*self }
     }
+    ///
+    /// Returns a copy with the radius set to 1.
+    ///
     pub fn to_unit(&self) -> SphericalCoords { Self::unit(self.inclination, self.azimuth) }
 
     pub fn translate_down(&self, theta: Radians) -> Self {

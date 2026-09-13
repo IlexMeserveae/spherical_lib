@@ -35,7 +35,7 @@ mod spherical_plotter {
             let (x, _y, z) = coords
                 .inverse_translate(self.focus().into())
                 .scale(self.sphere_radius() as f64)
-                .to_cartesian();
+                .into();
 
             cpos(z, x)
         }
@@ -50,7 +50,7 @@ mod spherical_plotter {
             let (x, y, z) = coords
                 .inverse_translate(self.focus().into())
                 .scale(r)
-                .to_cartesian();
+                .into();
 
             if y < 0.0 { None } else { Some(cpos(z, x)) }
         }
@@ -69,7 +69,7 @@ mod spherical_plotter {
             let y = (r * r - pos.length_sq()).sqrt();
             if y.is_nan() { return None; }
 
-            let coords = SphericalCoords::from_cartesian((x, y, z))
+            let coords = SphericalCoords::from((x, y, z))
                 .to_unit()
                 .translate(self.focus().into());
             Some(coords)
