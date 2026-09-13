@@ -74,7 +74,11 @@ mod spherical_plotter {
                 .translate(self.focus().into());
             Some(coords)
         }
-        fn plot_dot_if_visible(&self, coords: SphericalCoords, color: Color) {
+        ///
+        /// Plots a dot at the given coordinates,
+        /// unless it is hidden by the sphere.
+        ///
+        pub fn plot_dot_if_visible(&self, coords: SphericalCoords, color: Color) {
             let pos = self.pos_from_coords(coords);
             if let Some(pos) = pos { self.painter().paint_dot(pos, color); }
         }
